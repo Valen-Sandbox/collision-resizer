@@ -12,6 +12,8 @@ TOOL.ClientConVar[ "cz" ] =	"1.0"
 TOOL.ClientConVar[ "prco" ] =	"0"
 TOOL.ClientConVar[ "dcp" ] =	"0"
 
+local math_Clamp = math.Clamp
+
 local function IsValidEntity( ent )
 
 	return isentity( ent ) and ent:IsValid()
@@ -44,6 +46,16 @@ local function FindSizeHandler( ent )
 
 end
 
+local function ClampVal( scale )
+
+	scale.x = math_Clamp( scale.x, 0.1, 10 )
+	scale.y = math_Clamp( scale.y, 0.1, 10 )
+	scale.z = math_Clamp( scale.z, 0.1, 10 )
+
+	return scale
+
+end
+
 local function ResizePhysics( ent, scale )
 
 	ent:PhysicsInit( SOLID_VPHYSICS )
@@ -55,6 +67,8 @@ local function ResizePhysics( ent, scale )
 	local physmesh = physobj:GetMeshConvexes()
 
 	if ( not istable( physmesh ) ) or ( #physmesh < 1 ) then return false end
+
+	ClampVal( scale )
 
 	for convexkey, convex in pairs( physmesh ) do
 
@@ -121,7 +135,7 @@ if ( SERVER ) then
 			for k, Constraint in pairs( Constraints ) do
 
 				if ( Constraint ~= RConstraint ) then
-	
+
 					table.insert( NewTab, Constraint )
 
 				end
@@ -503,7 +517,7 @@ if ( SERVER ) then
 
 			if ( physdata ) then
 
-				local scale = sizedata[ 1 ]
+				local scale = ClampVal( sizedata[ 1 ] )
 
 				StoreConstraintData( ent )
 				PhysicsData_Restore[ ent ] = physdata
@@ -516,7 +530,7 @@ if ( SERVER ) then
 
 					local physobj = ent:GetPhysicsObject()
 
-					physobj:SetMass( math.Clamp( sizedata[ 4 ] * scale.x * scale.y * scale.z, 0.1, 50000 ) )
+					physobj:SetMass( math_Clamp( sizedata[ 4 ] * scale.x * scale.y * scale.z, 0.1, 50000 ) )
 					physobj:SetDamping( 0, 0 )
 
 				else
@@ -558,47 +572,46 @@ if ( SERVER ) then
 		local pscale = Vector( data[ 1 ], data[ 2 ], data[ 3 ] )
 		local vscale = Vector( data[ 4 ], data[ 5 ], data[ 6 ] )
 
-		if ( pscale ~= RESET ) then
+		ClampVal( pscale )
+		ClampVal( vscale )
 
-			if ( HasValidPhysics( ent ) ) then
+		if ( pscale ~= RESET and HasValidPhysics( ent ) ) then
 
-				local physobj = ent:GetPhysicsObject()
+			local physobj = ent:GetPhysicsObject()
 
-				if ( IsValidPhysicsObject( physobj ) ) then
+			if ( IsValidPhysicsObject( physobj ) ) then
 
-					local sizedata = CreateSizeData( ent, physobj )
-					sizedata[ 1 ]:Set( pscale )
+				local sizedata = CreateSizeData( ent, physobj )
+				sizedata[ 1 ]:Set( pscale )
 
-					StorePhysicsData( physobj )
+				StorePhysicsData( physobj )
 
-					local success = ResizePhysics( ent, pscale )
+				local success = ResizePhysics( ent, pscale )
 
-					if ( data[ 7 ] ) then
+				if ( data[ 7 ] ) then
 
-						GetSizeHandler( ent ):SetActualPhysicsScale( tostring( RESET ) )
+					GetSizeHandler( ent ):SetActualPhysicsScale( tostring( RESET ) )
 
-					else
+				else
 
-						GetSizeHandler( ent ):SetActualPhysicsScale( tostring( pscale ) )
+					GetSizeHandler( ent ):SetActualPhysicsScale( tostring( pscale ) )
 
-					end
+				end
 
-					ent:SetCollisionBounds( sizedata[ 2 ] * pscale, sizedata[ 3 ] * pscale )
+				ent:SetCollisionBounds( sizedata[ 2 ] * pscale, sizedata[ 3 ] * pscale )
 
-					if ( success ) then
+				if ( success ) then
 
-						physobj = ent:GetPhysicsObject()
+					physobj = ent:GetPhysicsObject()
 
-						physobj:SetMass( math.Clamp( sizedata[ 4 ] * pscale.x * pscale.y * pscale.z, 0.1, 50000 ) )
-						physobj:SetDamping( 0, 0 )
+					physobj:SetMass( math_Clamp( sizedata[ 4 ] * pscale.x * pscale.y * pscale.z, 0.1, 50000 ) )
+					physobj:SetDamping( 0, 0 )
 
-						ApplyPhysicsData( physobj )
+					ApplyPhysicsData( physobj )
 
-						physobj:Wake()
+					physobj:Wake()
 
-						if ( ent.IsMotionControlled ) then o_StartMotionController( ent ) end
-
-					end
+					if ( ent.IsMotionControlled ) then o_StartMotionController( ent ) end
 
 				end
 
@@ -675,7 +688,7 @@ if ( SERVER ) then
 
 					physobj = ent:GetPhysicsObject()
 
-					physobj:SetMass( math.Clamp( sizedata[ 4 ] * scale.x * scale.y * scale.z, 0.1, 50000 ) )
+					physobj:SetMass( math_Clamp( sizedata[ 4 ] * scale.x * scale.y * scale.z, 0.1, 50000 ) )
 					physobj:SetDamping( 0, 0 )
 
 					ApplyConstraintData()
@@ -779,14 +792,6 @@ if ( SERVER ) then
 	end
 
 	local advresizer_clamp =	CreateConVar( "advresizer_clamp",	"0",	FCVAR_ARCHIVE + FCVAR_NOTIFY,	"Force the Prop Resizer to clamp its values." )
-
-	local function ClampVal( scale )
-
-		scale.x = math.Clamp( scale.x, 0.1, 10 )
-		scale.y = math.Clamp( scale.y, 0.1, 10 )
-		scale.z = math.Clamp( scale.z, 0.1, 10 )
-
-	end
 
 	function TOOL:LeftClick( Trace )
 
@@ -1229,7 +1234,7 @@ if ( CLIENT ) then
 
 		if ( sizedata ) then
 
-			local scale = sizedata[ 1 ]
+			local scale = ClampVal( sizedata[ 1 ] )
 
 			local m = Matrix()
 
@@ -1245,7 +1250,7 @@ if ( CLIENT ) then
 
 		elseif ( isfunction( self.GetVisualScale ) ) then
 
-			local scale = Vector( self:GetVisualScale() )
+			local scale = ClampVal( Vector( self:GetVisualScale() ) )
 
 			if ( scale ~= RESET ) and ( scale ~= EMPTY ) then
 
@@ -1329,7 +1334,7 @@ if ( CLIENT ) then
 
 			if ( sizedata ) then
 
-				local scale = sizedata[ 1 ]
+				local scale = ClampVal( sizedata[ 1 ] )
 
 				local m = Matrix()
 
@@ -1345,7 +1350,7 @@ if ( CLIENT ) then
 
 			else
 
-				local scale = Vector( self:GetVisualScale() )
+				local scale = ClampVal( Vector( self:GetVisualScale() ) )
 
 				if ( scale ~= RESET ) and ( scale ~= EMPTY ) then
 
